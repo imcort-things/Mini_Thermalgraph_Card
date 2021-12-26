@@ -90,13 +90,13 @@ static void lfclk_config(void)
 }
 
 void bsp_evt_handler(bsp_event_t evt)
-{
+{drv_oled_on();
     switch (evt)
     {
-        case BSP_EVENT_KEY_0:
+        case BSP_EVENT_KEY_2:
 				
 						NRF_LOG_INFO("KEY0");
-						drv_oled_on();
+						
             break;
 
         default:
@@ -220,8 +220,8 @@ int main(void)
 
     drv_oled_begin();
 	
-		nrf_gpio_cfg_output(23);
-		nrf_gpio_pin_set(23);
+		nrf_gpio_cfg_output(26);
+		nrf_gpio_pin_set(26);
 	
 		iic_init();
 		amg88xx_begin();
