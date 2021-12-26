@@ -412,6 +412,11 @@
               <FileType>1</FileType>
               <FilePath>..\..\..\..\..\..\user_libraries\nrf_u8g2\drv_oled.c</FilePath>
             </File>
+            <File>
+              <FileName>imresize.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\..\imresize.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

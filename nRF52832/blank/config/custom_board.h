@@ -44,7 +44,7 @@
 #define CUSTOM_BOARD_H
 
 
-//#define USE_SPI
+#define USE_SPI
 #define USE_IIC
 
 // LEDs definitions for PCA10040
@@ -82,11 +82,17 @@
 #define BSP_BUTTON_2   BUTTON_3
 //#define BSP_BUTTON_3   BUTTON_4
 
-#ifdef USE_IIC
-
 #define IIC_SDA   23
 #define IIC_SCL   22
 
-#endif
+//New PCB of NFC card
+#define OLED_PIN_CS     3//2
+#define OLED_PIN_VDISP  2//3  
+#define OLED_PIN_RESET  4
+#define OLED_PIN_DC     5
+
+#define SPI_PIN_SCK     6
+#define SPI_PIN_MISO    0xFF
+#define SPI_PIN_MOSI    7
 
 #endif // PCA10040_H
