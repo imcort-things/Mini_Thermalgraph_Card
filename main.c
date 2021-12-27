@@ -90,7 +90,8 @@ static void lfclk_config(void)
 }
 
 void bsp_evt_handler(bsp_event_t evt)
-{drv_oled_on();
+{
+    drv_oled_on();
     switch (evt)
     {
         case BSP_EVENT_KEY_2:
@@ -116,29 +117,7 @@ static void bsp_configuration()
     APP_ERROR_CHECK(err_code);
 }
 
-//void Bubble_sort(int16_t *arr, int len)
-//{
-//	
-//    int16_t tmp = 0;
-//    bool swap = false;
-//    for (int i = 0; i < len -1; i++)
-//    {
-//        for (int j = 0; j < len - 1 - i; j++)
-//        {
-//            if (arr[j] > arr[j + 1])
-//            {
-//                tmp = arr[j];
-//                arr[j] = arr[j + 1];
-//                arr[j + 1] = tmp;
-//                swap = true;
-//            }
-//        }
-//        if (!swap)
-//        {
-//            return;
-//        }
-//    }
-//}
+
 
 extern u8g2_t u8g2;
 

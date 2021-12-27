@@ -413,9 +413,9 @@
               <FilePath>..\..\..\..\..\..\user_libraries\nrf_u8g2\drv_oled.c</FilePath>
             </File>
             <File>
-              <FileName>imresize.c</FileName>
+              <FileName>improcess.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\..\..\imresize.c</FilePath>
+              <FilePath>..\..\..\improcess.c</FilePath>
             </File>
           </Files>
         </Group>
