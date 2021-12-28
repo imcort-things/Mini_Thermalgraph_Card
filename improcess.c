@@ -1,11 +1,14 @@
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+
+#include "transfer_handler.h"
  
 typedef struct {
  
-     int16_t red,green,blue;
+     int16_t temperature;
     
 } PPMPixel;
  
@@ -13,110 +16,106 @@ typedef struct {
  
      int x, y;
      PPMPixel *data;
+    
 } PPMImage;
  
-typedef unsigned char uint8_t;
-typedef signed char int8_t;
-typedef unsigned short uint16_t;
-typedef signed short int16_t;
+//#define CREATOR "FELIXKLEMM"
+//#define RGB_COMPONENT_COLOR 255
+// 
+//#define INP_PATH "Bilder/image.ppm"
+//#define OUT_PATH "Bilder/image_out.ppm"
  
-#define CREATOR "FELIXKLEMM"
-#define RGB_COMPONENT_COLOR 255
- 
-#define INP_PATH "Bilder/image.ppm"
-#define OUT_PATH "Bilder/image_out.ppm"
- 
-#define W 21
-#define H 20
+#define W 8
+#define H 8
  
 #define CLAMP(v, min, max) if(v < min) { v = min; } else if(v > max) { v = max; }
  
-static PPMImage *readPPM(const char *filename) {
- 
-    char buff[16];
-    PPMImage *img;
-    FILE *fp;
- 
-    int c, rgb_comp_color;
- 
-    //open PPM file for reading
-    fp = fopen(filename, "rb");
-    if(!fp) {
- 
-        fprintf(stderr, "Unable to open file '%s'\n", filename);
-        exit(1);
-    }
- 
-    //read image format
-    if(!fgets(buff, sizeof(buff), fp)) {
- 
-        perror(filename);
-        exit(1);
-    }
- 
-    //check the image format
-    if(buff[0] != 'P' || buff[1] != '6') {
- 
-        fprintf(stderr, "Invalid image format (must be 'P6')\n");
-        exit(1);
-    }
- 
-    //alloc memory form image
-    img = (PPMImage *)malloc(sizeof(PPMImage));
-    if(!img) {
- 
-        fprintf(stderr, "Unable to allocate memory\n");
-        exit(1);
-    }
- 
-    //check for comments
-    c = getc(fp);
-    while (c == '#') {
- 
-        while (getc(fp) != '\n');
-        c = getc(fp);
-    }
- 
-    ungetc(c, fp);
-    //read image size information
-    if(fscanf(fp, "%d %d", &img->x, &img->y) != 2) {
- 
-        fprintf(stderr, "Invalid image size (error loading '%s')\n", filename);
-        exit(1);
-    }
- 
-    //read rgb component
-    if(fscanf(fp, "%d", &rgb_comp_color) != 1) {
-        fprintf(stderr, "Invalid rgb component (error loading '%s')\n", filename);
-        exit(1);
-    }
- 
-    //check rgb component depth
-    if(rgb_comp_color!= RGB_COMPONENT_COLOR) {
-        fprintf(stderr, "'%s' does not have 8-bits components\n", filename);
-        exit(1);
-    }
- 
-    while (fgetc(fp) != '\n');
-    //memory allocation for pixel data
-    img->data = (PPMPixel*)malloc(img->x * img->y * sizeof(PPMPixel));
- 
-    if(!img) {
- 
-        fprintf(stderr, "Unable to allocate memory\n");
-        exit(1);
-    }
- 
-    //read pixel data from file
-    if(fread(img->data, 3 * img->x, img->y, fp) != img->y) {
- 
-        fprintf(stderr, "Error loading image '%s'\n", filename);
-        exit(1);
-    }
- 
-    fclose(fp);
-    return img;
-}
+//static PPMImage *readPPM(const char *filename) {
+// 
+//    char buff[16];
+//    PPMImage *img;
+//    FILE *fp;
+// 
+//    int c, rgb_comp_color;
+// 
+//    //open PPM file for reading
+//    fp = fopen(filename, "rb");
+//    if(!fp) {
+// 
+//        fprintf(stderr, "Unable to open file '%s'\n", filename);
+//        exit(1);
+//    }
+// 
+//    //read image format
+//    if(!fgets(buff, sizeof(buff), fp)) {
+// 
+//        perror(filename);
+//        exit(1);
+//    }
+// 
+//    //check the image format
+//    if(buff[0] != 'P' || buff[1] != '6') {
+// 
+//        fprintf(stderr, "Invalid image format (must be 'P6')\n");
+//        exit(1);
+//    }
+// 
+//    //alloc memory form image
+//    img = (PPMImage *)malloc(sizeof(PPMImage));
+//    if(!img) {
+// 
+//        fprintf(stderr, "Unable to allocate memory\n");
+//        exit(1);
+//    }
+// 
+//    //check for comments
+//    c = getc(fp);
+//    while (c == '#') {
+// 
+//        while (getc(fp) != '\n');
+//        c = getc(fp);
+//    }
+// 
+//    ungetc(c, fp);
+//    //read image size information
+//    if(fscanf(fp, "%d %d", &img->x, &img->y) != 2) {
+// 
+//        fprintf(stderr, "Invalid image size (error loading '%s')\n", filename);
+//        exit(1);
+//    }
+// 
+//    //read rgb component
+//    if(fscanf(fp, "%d", &rgb_comp_color) != 1) {
+//        fprintf(stderr, "Invalid rgb component (error loading '%s')\n", filename);
+//        exit(1);
+//    }
+// 
+//    //check rgb component depth
+//    if(rgb_comp_color!= RGB_COMPONENT_COLOR) {
+//        fprintf(stderr, "'%s' does not have 8-bits components\n", filename);
+//        exit(1);
+//    }
+// 
+//    while (fgetc(fp) != '\n');
+//    //memory allocation for pixel data
+//    img->data = (PPMPixel*)malloc(img->x * img->y * sizeof(PPMPixel));
+// 
+//    if(!img) {
+// 
+//        fprintf(stderr, "Unable to allocate memory\n");
+//        exit(1);
+//    }
+// 
+//    //read pixel data from file
+//    if(fread(img->data, 3 * img->x, img->y, fp) != img->y) {
+// 
+//        fprintf(stderr, "Error loading image '%s'\n", filename);
+//        exit(1);
+//    }
+// 
+//    fclose(fp);
+//    return img;
+//}
  
 static PPMImage *init_destination_image(float scale) {
  
@@ -126,47 +125,47 @@ static PPMImage *init_destination_image(float scale) {
     img = (PPMImage *)malloc(sizeof(PPMImage));
     if(!img) {
  
-        fprintf(stderr, "Unable to allocate memory\n");
-        exit(1);
+        Debug("Unable to allocate memory\n");
+        return NULL;
     }
  
     //memory allocation for pixel data
     img->data = (PPMPixel*)malloc(W * H * (int)scale * sizeof(PPMPixel));
     if(!img) {
  
-        fprintf(stderr, "Unable to allocate memory\n");
-        exit(1);
+        Debug("Unable to allocate memory\n");
+        return NULL;
     }
     return img;
 }
  
-void writePPM(const char *filename, PPMImage *img)
-{
-    FILE *fp;
-    //open file for output
-    fp = fopen(filename, "wb");
-    if (!fp) {
-         fprintf(stderr, "Unable to open file '%s'\n", filename);
-         exit(1);
-    }
- 
-    //write the header file
-    //image format
-    fprintf(fp, "P6\n");
- 
-    //comments
-    fprintf(fp, "# Created by %s\n",CREATOR);
- 
-    //image size
-    fprintf(fp, "%d %d\n",img->x,img->y);
- 
-    // rgb component depth
-    fprintf(fp, "%d\n",RGB_COMPONENT_COLOR);
- 
-    // pixel data
-    fwrite(img->data, 3 * img->x, img->y, fp);
-    fclose(fp);
-}
+//void writePPM(const char *filename, PPMImage *img)
+//{
+//    FILE *fp;
+//    //open file for output
+//    fp = fopen(filename, "wb");
+//    if (!fp) {
+//         fprintf(stderr, "Unable to open file '%s'\n", filename);
+//         exit(1);
+//    }
+// 
+//    //write the header file
+//    //image format
+//    fprintf(fp, "P6\n");
+// 
+//    //comments
+//    fprintf(fp, "# Created by %s\n",CREATOR);
+// 
+//    //image size
+//    fprintf(fp, "%d %d\n",img->x,img->y);
+// 
+//    // rgb component depth
+//    fprintf(fp, "%d\n",RGB_COMPONENT_COLOR);
+// 
+//    // pixel data
+//    fwrite(img->data, 3 * img->x, img->y, fp);
+//    fclose(fp);
+//}
  
 float cubic_hermite(float A, float B, float C, float D, float t) {
  
@@ -183,9 +182,9 @@ void get_pixel_clamped(PPMImage *source_image, int x, int y, uint8_t temp[])  {
     CLAMP(x, 0, source_image->x - 1);
     CLAMP(y, 0, source_image->y - 1);
     
-    temp[0] = source_image->data[x+(W*y)].red;
-    temp[1] = source_image->data[x+(W*y)].green;
-    temp[2] = source_image->data[x+(W*y)].blue;
+    temp[0] = source_image->data[x+(W*y)].temperature;
+//    temp[1] = source_image->data[x+(W*y)].green;
+//    temp[2] = source_image->data[x+(W*y)].blue;
 }
  
 void sample_bicubic(PPMImage *source_image, float u, float v, uint8_t sample[]) {
@@ -200,25 +199,25 @@ void sample_bicubic(PPMImage *source_image, float u, float v, uint8_t sample[]) 
     
     int i;
  
-    uint8_t p00[3];
-    uint8_t p10[3];
-    uint8_t p20[3];
-    uint8_t p30[3];
+    uint8_t p00[1];
+    uint8_t p10[1];
+    uint8_t p20[1];
+    uint8_t p30[1];
     
-    uint8_t p01[3];
-    uint8_t p11[3];
-    uint8_t p21[3];
-    uint8_t p31[3];
+    uint8_t p01[1];
+    uint8_t p11[1];
+    uint8_t p21[1];
+    uint8_t p31[1];
  
-    uint8_t p02[3];
-    uint8_t p12[3];
-    uint8_t p22[3];
-    uint8_t p32[3];
+    uint8_t p02[1];
+    uint8_t p12[1];
+    uint8_t p22[1];
+    uint8_t p32[1];
  
-    uint8_t p03[3];
-    uint8_t p13[3];
-    uint8_t p23[3];
-    uint8_t p33[3];
+    uint8_t p03[1];
+    uint8_t p13[1];
+    uint8_t p23[1];
+    uint8_t p33[1];
     
     // 1st row
     get_pixel_clamped(source_image, xint - 1, yint - 1, p00);   
@@ -245,7 +244,7 @@ void sample_bicubic(PPMImage *source_image, float u, float v, uint8_t sample[]) 
     get_pixel_clamped(source_image, xint + 2, yint + 2, p33);
     
     // interpolate bi-cubically!
-    for (i = 0; i < 3; i++) {
+    for (i = 0; i < 1; i++) {
  
         float col0 = cubic_hermite(p00[i], p10[i], p20[i], p30[i], xfract);
         float col1 = cubic_hermite(p01[i], p11[i], p21[i], p31[i], xfract);
@@ -258,21 +257,21 @@ void sample_bicubic(PPMImage *source_image, float u, float v, uint8_t sample[]) 
  
         sample[i] = (uint8_t)value;
         
-        printf("sample[%d]=%d\n",i,sample[i]);      
+        Debug("sample[%d]=%d\n",i,sample[i]);      
         
     }
     
 }
  
-void resize_image(PPMImage *source_image, PPMImage *destination_image, float scale) {
+void resize_image(PPMImage *source_image, PPMImage *destination_image, uint8_t scale) {
  
-    uint8_t sample[3];
+    uint8_t sample[1];
     int y, x;
     
-    destination_image->x = (long)((float)(source_image->x)*scale);
-    destination_image->y = (long)((float)(source_image->y)*scale);
+    destination_image->x = (long)((source_image->x)*scale);
+    destination_image->y = (long)((source_image->y)*scale);
     
-    printf("x-width=%d | y-width=%d\n",destination_image->x, destination_image->y);
+    Debug("x-width=%d | y-width=%d\n",destination_image->x, destination_image->y);
     
     for (y = 0; y < destination_image->y; y++) {
  
@@ -281,15 +280,91 @@ void resize_image(PPMImage *source_image, PPMImage *destination_image, float sca
         for (x = 0; x < destination_image->x; ++x) {
  
             float u = (float)x / (float)(destination_image->x - 1);
-            printf("v=%f\n",v);
-            printf("u=%f\n",u);
+            Debug("v=%f\n",v);
+            Debug("u=%f\n",u);
             sample_bicubic(source_image, u, v, sample);
  
-            destination_image->data[x+((destination_image->y)*y)].red   = sample[0];
-            destination_image->data[x+((destination_image->y)*y)].green = sample[1];  
-            destination_image->data[x+((destination_image->y)*y)].blue  = sample[2];  
+            destination_image->data[x+((destination_image->x)*y)].temperature   = sample[0];
+//            destination_image->data[x+((destination_image->y)*y)].green = sample[1];  
+//            destination_image->data[x+((destination_image->y)*y)].blue  = sample[2];  
         }
     }
+}
+static const int16_t m=64, n=64;
+
+int16_t max(int16_t* a, int n)
+{
+    int16_t maxnum = a[0];
+    
+    for(int i=0;i<n;i++)
+    {
+        if(a[i] > maxnum)
+            maxnum = a[i];
+    
+    }
+    return maxnum;
+}
+
+int16_t min(int16_t* a, int n)
+{
+    int16_t minnum = a[0];
+    
+    for(int i=0;i<n;i++)
+    {
+        if(a[i] < minnum)
+            minnum = a[i];
+    
+    }
+    return minnum;
+}
+
+void showFloyd(PPMImage *source_image)
+{
+    PPMImage *destination_image;
+    destination_image = init_destination_image(8);
+    
+    int16_t maxnum = max((int16_t*)source_image->data, 64);
+    int16_t minnum = min((int16_t*)source_image->data, 64);
+    
+    Debug("Max %d, Min %d",maxnum,minnum);
+    
+    resize_image(source_image, destination_image, 8);
+    
+    for(int x=0; x<m; x++)
+    {
+        for(int y=0; y<n; y++)
+        {
+            int16_t pixel = destination_image->data[x+((destination_image->x)*y)].temperature;
+            int16_t err;
+            if(pixel < ((maxnum - minnum)/2))
+            {
+                draw_dot(x,y,0);
+                err = pixel - minnum;
+            }
+                
+            else
+            {
+                draw_dot(x,y,1);
+                err = pixel - maxnum;
+            }
+            
+            if(y+1<m)
+                destination_image->data[x+((destination_image->x)*(y+1))].temperature = destination_image->data[x+((destination_image->x)*(y+1))].temperature +7/16*err;
+                //tmp(x,y+1)=tmp(x,y+1)+7/16*err;
+            if(x+1<m && y>2)
+                destination_image->data[(x+1)+((destination_image->x)*(y-1))].temperature = destination_image->data[(x+1)+((destination_image->x)*(y-1))].temperature +3/16*err;
+                //tmp(x+1,y-1)=tmp(x+1,y-1)+3/16*err;
+            if(x+1<m)
+                destination_image->data[(x+1)+((destination_image->x)*y)].temperature = destination_image->data[(x+1)+((destination_image->x)*y)].temperature +5/16*err;
+                //tmp(x+1,y)=tmp(x+1,y)+5/16*err;
+            if(x+1<m && y+1<m)
+                destination_image->data[(x+1)+((destination_image->x)*(y+1))].temperature = destination_image->data[(x+1)+((destination_image->x)*(y+1))].temperature +1/16*err;
+                //tmp(x+1,y+1)=tmp(x+1,y+1)+1/16*err;
+                
+        }
+    
+    }
+
 }
  
 //int main() {
