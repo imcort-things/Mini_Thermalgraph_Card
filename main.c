@@ -116,26 +116,19 @@ static void get_ir_temp_timer_handler(void * p_context)
     
     Debug("max:%d, min:%d",findmax(temp_grid,64),findmin(temp_grid,64));
     
-	PPMImage source_image;
-    source_image.x = 8;
-    source_image.y = 8;
     
-    source_image.data =  temp_grid;
+    uint8_t xbm[64*8] = {0xff, 0xff};
+    //memset(xbm, 0, 64*8);
     
-    uint8_t xbm[64*8];
-    
-    showFloyd(&source_image, xbm);
+    //showFloyd(temp_grid, xbm);
     
     
-    xbm[0] = 0xff;
-    xbm[1] = 0xff;
     
-    u8g2_SetDrawColor(&u8g2, 1);
-        u8g2_SetBitmapMode(&u8g2,0);
     
     do {
-        
-        u8g2_DrawXBM(&u8g2,0,0,64,64,xbm);
+        u8g2_SetDrawColor(&u8g2, 1);
+        u8g2_SetBitmapMode(&u8g2,0);
+        u8g2_DrawXBM(&u8g2,0,0,64,16,(uint8_t*)temp_grid);
     } while (u8g2_NextPage(&u8g2));
 	
 }

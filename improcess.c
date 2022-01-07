@@ -6,167 +6,15 @@
 
 #include "transfer_handler.h"
  
-//typedef struct {
-// 
-//     int16_t temperature;
-//    
-//} PPMPixel;
- 
-typedef struct {
- 
-     int x, y;
-     int16_t *data;
-    
-} PPMImage;
- 
-//#define CREATOR "FELIXKLEMM"
-//#define RGB_COMPONENT_COLOR 255
-// 
-//#define INP_PATH "Bilder/image.ppm"
-//#define OUT_PATH "Bilder/image_out.ppm"
- 
-#define W 8
-#define H 8
+#define SOURCE_X 8
+#define SOURCE_Y 8
 #define SCALE 8
  
 #define CLAMP(v, min, max) if(v < min) { v = min; } else if(v > max) { v = max; }
- 
-//static PPMImage *readPPM(const char *filename) {
-// 
-//    char buff[16];
-//    PPMImage *img;
-//    FILE *fp;
-// 
-//    int c, rgb_comp_color;
-// 
-//    //open PPM file for reading
-//    fp = fopen(filename, "rb");
-//    if(!fp) {
-// 
-//        fprintf(stderr, "Unable to open file '%s'\n", filename);
-//        exit(1);
-//    }
-// 
-//    //read image format
-//    if(!fgets(buff, sizeof(buff), fp)) {
-// 
-//        perror(filename);
-//        exit(1);
-//    }
-// 
-//    //check the image format
-//    if(buff[0] != 'P' || buff[1] != '6') {
-// 
-//        fprintf(stderr, "Invalid image format (must be 'P6')\n");
-//        exit(1);
-//    }
-// 
-//    //alloc memory form image
-//    img = (PPMImage *)malloc(sizeof(PPMImage));
-//    if(!img) {
-// 
-//        fprintf(stderr, "Unable to allocate memory\n");
-//        exit(1);
-//    }
-// 
-//    //check for comments
-//    c = getc(fp);
-//    while (c == '#') {
-// 
-//        while (getc(fp) != '\n');
-//        c = getc(fp);
-//    }
-// 
-//    ungetc(c, fp);
-//    //read image size information
-//    if(fscanf(fp, "%d %d", &img->x, &img->y) != 2) {
-// 
-//        fprintf(stderr, "Invalid image size (error loading '%s')\n", filename);
-//        exit(1);
-//    }
-// 
-//    //read rgb component
-//    if(fscanf(fp, "%d", &rgb_comp_color) != 1) {
-//        fprintf(stderr, "Invalid rgb component (error loading '%s')\n", filename);
-//        exit(1);
-//    }
-// 
-//    //check rgb component depth
-//    if(rgb_comp_color!= RGB_COMPONENT_COLOR) {
-//        fprintf(stderr, "'%s' does not have 8-bits components\n", filename);
-//        exit(1);
-//    }
-// 
-//    while (fgetc(fp) != '\n');
-//    //memory allocation for pixel data
-//    img->data = (PPMPixel*)malloc(img->x * img->y * sizeof(PPMPixel));
-// 
-//    if(!img) {
-// 
-//        fprintf(stderr, "Unable to allocate memory\n");
-//        exit(1);
-//    }
-// 
-//    //read pixel data from file
-//    if(fread(img->data, 3 * img->x, img->y, fp) != img->y) {
-// 
-//        fprintf(stderr, "Error loading image '%s'\n", filename);
-//        exit(1);
-//    }
-// 
-//    fclose(fp);
-//    return img;
-//}
- 
-//static PPMImage *init_destination_image(void) {
-// 
-//    static PPMImage *img;
-// 
-////    //alloc memory form image
-////    img = (PPMImage *)malloc(sizeof(PPMImage));
-////    if(!img) {
-//// 
-////        Debug("Unable to allocate memory\n");
-////        return NULL;
-////    }
-//    
-//    static int16_t _data[W * H * SCALE];
-// 
-//    //memory allocation for pixel data
-//    img->data = _data;
-//    
-//    return img;
-//}
- 
-//void writePPM(const char *filename, PPMImage *img)
-//{
-//    FILE *fp;
-//    //open file for output
-//    fp = fopen(filename, "wb");
-//    if (!fp) {
-//         fprintf(stderr, "Unable to open file '%s'\n", filename);
-//         exit(1);
-//    }
-// 
-//    //write the header file
-//    //image format
-//    fprintf(fp, "P6\n");
-// 
-//    //comments
-//    fprintf(fp, "# Created by %s\n",CREATOR);
-// 
-//    //image size
-//    fprintf(fp, "%d %d\n",img->x,img->y);
-// 
-//    // rgb component depth
-//    fprintf(fp, "%d\n",RGB_COMPONENT_COLOR);
-// 
-//    // pixel data
-//    fwrite(img->data, 3 * img->x, img->y, fp);
-//    fclose(fp);
-//}
- 
-float cubic_hermite(float A, float B, float C, float D, float t) {
+
+static int16_t destination_data[SOURCE_X * SOURCE_Y * SCALE * SCALE];
+
+static float cubic_hermite(float A, float B, float C, float D, float t) {
  
     float a = -A / 2.0f + (3.0f*B) / 2.0f - (3.0f*C) / 2.0f + D / 2.0f;
     float b = A - (5.0f*B) / 2.0f + 2.0f*C - D / 2.0f;
@@ -176,24 +24,23 @@ float cubic_hermite(float A, float B, float C, float D, float t) {
     return a*t*t*t + b*t*t + c*t + d;
 }
  
-void get_pixel_clamped(PPMImage *source_image, int x, int y, uint8_t temp[])  {
+void get_pixel_clamped(int16_t *source_data, int x, int y, uint8_t *temp)  {
  
-    CLAMP(x, 0, source_image->x - 1);
-    CLAMP(y, 0, source_image->y - 1);
-    Debug("get source_image pixel x=%d y=%d",x,y);
-    temp[0] = source_image->data[x+(W*y)];
+    CLAMP(x, 0, SOURCE_X - 1);
+    CLAMP(y, 0, SOURCE_Y - 1);
+    //Debug("get source_image pixel x=%d y=%d",x,y);
     
-//    temp[1] = source_image->data[x+(W*y)].green;
-//    temp[2] = source_image->data[x+(W*y)].blue;
+    *temp = source_data[x+(SOURCE_X*y)];
+    
 }
  
-void sample_bicubic(PPMImage *source_image, float u, float v, uint8_t sample[]) {
+void sample_bicubic(int16_t *source_data, float u, float v, uint8_t sample[]) {
  
-    float x = (u * source_image->x) - 0.5f;
+    float x = (u * SOURCE_X) - 0.5f;
     int xint = (int)x;
     float xfract = x-floor(x);
  
-    float y = (v * source_image->y) - 0.5f;
+    float y = (v * SOURCE_Y) - 0.5f;
     int yint = (int)y;
     float yfract = y - floor(y);
     
@@ -220,28 +67,28 @@ void sample_bicubic(PPMImage *source_image, float u, float v, uint8_t sample[]) 
     uint8_t p33[1];
     
     // 1st row
-    get_pixel_clamped(source_image, xint - 1, yint - 1, p00);   
-    get_pixel_clamped(source_image, xint + 0, yint - 1, p10);
-    get_pixel_clamped(source_image, xint + 1, yint - 1, p20);
-    get_pixel_clamped(source_image, xint + 2, yint - 1, p30);
+    get_pixel_clamped(source_data, xint - 1, yint - 1, p00);   
+    get_pixel_clamped(source_data, xint + 0, yint - 1, p10);
+    get_pixel_clamped(source_data, xint + 1, yint - 1, p20);
+    get_pixel_clamped(source_data, xint + 2, yint - 1, p30);
     
     // 2nd row
-    get_pixel_clamped(source_image, xint - 1, yint + 0, p01);
-    get_pixel_clamped(source_image, xint + 0, yint + 0, p11);
-    get_pixel_clamped(source_image, xint + 1, yint + 0, p21);
-    get_pixel_clamped(source_image, xint + 2, yint + 0, p31);
+    get_pixel_clamped(source_data, xint - 1, yint + 0, p01);
+    get_pixel_clamped(source_data, xint + 0, yint + 0, p11);
+    get_pixel_clamped(source_data, xint + 1, yint + 0, p21);
+    get_pixel_clamped(source_data, xint + 2, yint + 0, p31);
  
     // 3rd row
-    get_pixel_clamped(source_image, xint - 1, yint + 1, p02);
-    get_pixel_clamped(source_image, xint + 0, yint + 1, p12);
-    get_pixel_clamped(source_image, xint + 1, yint + 1, p22);
-    get_pixel_clamped(source_image, xint + 2, yint + 1, p32);
+    get_pixel_clamped(source_data, xint - 1, yint + 1, p02);
+    get_pixel_clamped(source_data, xint + 0, yint + 1, p12);
+    get_pixel_clamped(source_data, xint + 1, yint + 1, p22);
+    get_pixel_clamped(source_data, xint + 2, yint + 1, p32);
  
     // 4th row
-    get_pixel_clamped(source_image, xint - 1, yint + 2, p03);
-    get_pixel_clamped(source_image, xint + 0, yint + 2, p13);
-    get_pixel_clamped(source_image, xint + 1, yint + 2, p23);
-    get_pixel_clamped(source_image, xint + 2, yint + 2, p33);
+    get_pixel_clamped(source_data, xint - 1, yint + 2, p03);
+    get_pixel_clamped(source_data, xint + 0, yint + 2, p13);
+    get_pixel_clamped(source_data, xint + 1, yint + 2, p23);
+    get_pixel_clamped(source_data, xint + 2, yint + 2, p33);
     
     // interpolate bi-cubically!
     for (i = 0; i < 1; i++) {
@@ -263,33 +110,26 @@ void sample_bicubic(PPMImage *source_image, float u, float v, uint8_t sample[]) 
     
 }
  
-void resize_image(PPMImage *source_image, PPMImage *destination_image) {
+void resize_image(int16_t *source_data) {
  
     uint8_t sample[1] = {0xff};
     int y, x;
     
-    destination_image->x = ((source_image->x)*SCALE);
-    destination_image->y = ((source_image->y)*SCALE);
-    
-    Debug("x-width=%d | y-width=%d\n",destination_image->x, destination_image->y);
-    
-    for (y = 0; y < destination_image->y; y++) {
+    for (y = 0; y < (SOURCE_Y * SCALE); y++) {
  
-        float v = (float)y / (float)(destination_image->y - 1);
-        Debug("set destination_image pixel x=%d y=%d, memory%d",x,y, x+((destination_image->x)*y));
-        for (x = 0; x < destination_image->x; ++x) {
+        float v = (float)y / (float)((SOURCE_Y * SCALE) - 1);
+        for (x = 0; x < (SOURCE_X * SCALE); x++) {
  
-            float u = (float)x / (float)(destination_image->x - 1);
+            float u = (float)x / (float)((SOURCE_X * SCALE) - 1);
             
-            //sample_bicubic(source_image, u, v, sample);
+            sample_bicubic(source_data, u, v, sample);
             
-            //destination_image->data[x+((destination_image->x)*y)]   = sample[0];
-//            destination_image->data[x+((destination_image->y)*y)].green = sample[1];  
-//            destination_image->data[x+((destination_image->y)*y)].blue  = sample[2];  
+            destination_data[x+((SOURCE_X * SCALE)*y)] = sample[0];
+            //Debug("set destination_image pixel x=%d y=%d, memory%d",x,y, x+((SOURCE_X * SCALE)*y));
+            
         }
     }
 }
-static const int16_t m=64, n=64;
 
 int16_t max(int16_t* a, int n)
 {
@@ -317,20 +157,57 @@ int16_t min(int16_t* a, int n)
     return minnum;
 }
 
-static int16_t destination_data[W * H * SCALE];
 
-void showFloyd(PPMImage *source_image, uint8_t* xbm)
+
+void showFloyd(int16_t *source_data, uint8_t* xbm)
 {
-    PPMImage destination_image;
-    destination_image.data = destination_data;
     
-    int16_t maxnum = max((int16_t*)source_image->data, 64);
-    int16_t minnum = min((int16_t*)source_image->data, 64);
+    int x,y;
     
-    
-    
-    resize_image(source_image, &destination_image);
+    int16_t maxnum = max(source_data, 64);
+    int16_t minnum = min(source_data, 64);
+
+    resize_image(source_data);
     Debug("Max %d, Min %d",maxnum,minnum);
+    
+    for (y = 0; y < (SOURCE_Y * SCALE); y++) {
+ 
+        for (x = 0; x < (SOURCE_X * SCALE); x++) {
+ 
+            int16_t pixel = destination_data[x+((SOURCE_X * SCALE)*y)];
+            int16_t err;
+            
+            if(pixel < ((maxnum - minnum)/2))
+            {
+                //draw_dot(x,y,0);
+                err = pixel - minnum;
+                Debug("BLACK x %d, y %d",x,y);
+            }
+            
+            else
+            {
+                //draw_dot(x,y,1);
+                xbm[(y*(SOURCE_X * SCALE)+x)/8] |= 1<<((y*(SOURCE_X * SCALE)+x)%8);
+                err = pixel - maxnum;
+                Debug("WHITE x %d, y %d",x,y);
+            }
+            
+            if(y+1<(SOURCE_Y * SCALE))
+                destination_data[x+((SOURCE_X * SCALE)*(y+1))] = destination_data[x+((SOURCE_X * SCALE)*(y+1))] +7/16*err;
+                //tmp(x,y+1)=tmp(x,y+1)+7/16*err;
+            if(x+1<(SOURCE_X * SCALE) && y>2)
+                destination_data[(x+1)+((SOURCE_X * SCALE)*(y-1))] = destination_data[(x+1)+((SOURCE_X * SCALE)*(y-1))] +3/16*err;
+                //tmp(x+1,y-1)=tmp(x+1,y-1)+3/16*err;
+            if(x+1<(SOURCE_X * SCALE))
+                destination_data[(x+1)+((SOURCE_X * SCALE)*y)] = destination_data[(x+1)+((SOURCE_X * SCALE)*y)] +5/16*err;
+                //tmp(x+1,y)=tmp(x+1,y)+5/16*err;
+            if(x+1<(SOURCE_X * SCALE) && y+1<(SOURCE_Y * SCALE))
+                destination_data[(x+1)+((SOURCE_X * SCALE)*(y+1))] = destination_data[(x+1)+((SOURCE_X * SCALE)*(y+1))] +1/16*err;
+                //tmp(x+1,y+1)=tmp(x+1,y+1)+1/16*err;
+            
+        }
+    }
+    
 //    for(int x=0; x<m; x++)
 //    {
 //        for(int y=0; y<n; y++)
