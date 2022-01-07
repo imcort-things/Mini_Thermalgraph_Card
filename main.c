@@ -73,11 +73,70 @@ static int16_t temp_grid[64];
 
 void disp_temperature(int16_t * temp_grid);
 
+extern u8g2_t u8g2;
+
+int16_t findmax(int16_t* a, int n)
+{
+    int16_t maxnum = a[0];
+    
+    for(int i=0;i<n;i++)
+    {
+        if(a[i] > maxnum)
+            maxnum = a[i];
+    
+    }
+    return maxnum;
+}
+
+int16_t findmin(int16_t* a, int n)
+{
+    int16_t minnum = a[0];
+    
+    for(int i=0;i<n;i++)
+    {
+        if(a[i] < minnum)
+            minnum = a[i];
+    
+    }
+    return minnum;
+}
+
+ 
+typedef struct {
+ 
+     int x, y;
+     int16_t *data;
+    
+} PPMImage;
+
 static void get_ir_temp_timer_handler(void * p_context)
 {
 
-		amg88xx_getIRGrid(temp_grid);
-		disp_temperature(temp_grid);
+	amg88xx_getIRGrid(temp_grid);
+    
+    Debug("max:%d, min:%d",findmax(temp_grid,64),findmin(temp_grid,64));
+    
+	PPMImage source_image;
+    source_image.x = 8;
+    source_image.y = 8;
+    
+    source_image.data =  temp_grid;
+    
+    uint8_t xbm[64*8];
+    
+    showFloyd(&source_image, xbm);
+    
+    
+    xbm[0] = 0xff;
+    xbm[1] = 0xff;
+    
+    u8g2_SetDrawColor(&u8g2, 1);
+        u8g2_SetBitmapMode(&u8g2,0);
+    
+    do {
+        
+        u8g2_DrawXBM(&u8g2,0,0,64,64,xbm);
+    } while (u8g2_NextPage(&u8g2));
 	
 }
 
@@ -119,36 +178,34 @@ static void bsp_configuration()
 
 
 
-extern u8g2_t u8g2;
- 
-typedef struct {
- 
-     int x, y;
-     int16_t *data;
-    
-} PPMImage;
+
+
 
 void draw_dot(int x, int y, bool c)
 {
     
-        u8g2_SetDrawColor(&u8g2, ~c);
+        u8g2_SetDrawColor(&u8g2, c);
         u8g2_DrawPixel(&u8g2, x, y);
     
 }
 
-void disp_temperature(int16_t * temp_grid)
-{
-	PPMImage source_image;
-    source_image.x = 8;
-    source_image.y = 8;
-    
-    source_image.data =  temp_grid;
-    
-    u8g2_FirstPage(&u8g2);
-    do {
-        showFloyd(&source_image);
-} while (u8g2_NextPage(&u8g2));
-}
+//void disp_temperature(int16_t * temp_grid)
+//{
+//	PPMImage source_image;
+//    source_image.x = 8;
+//    source_image.y = 8;
+//    
+//    source_image.data =  temp_grid;
+//    uint8_t xbm[64*8];
+//    
+//    showFloyd(&source_image, xbm);
+//    u8g2_FirstPage(&u8g2);
+//    do {
+//        u8g2_SetDrawColor(&u8g2, 1);
+//        u8g2_SetBitmapMode(&u8g2,0);
+//        u8g2_DrawXBM(&u8g2,0,0,64,64,xbm);
+//    } while (u8g2_NextPage(&u8g2));
+//}
 
 /**
  * @brief Function for main application entry.

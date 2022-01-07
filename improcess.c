@@ -6,16 +6,16 @@
 
 #include "transfer_handler.h"
  
-typedef struct {
- 
-     int16_t temperature;
-    
-} PPMPixel;
+//typedef struct {
+// 
+//     int16_t temperature;
+//    
+//} PPMPixel;
  
 typedef struct {
  
      int x, y;
-     PPMPixel *data;
+     int16_t *data;
     
 } PPMImage;
  
@@ -27,6 +27,7 @@ typedef struct {
  
 #define W 8
 #define H 8
+#define SCALE 8
  
 #define CLAMP(v, min, max) if(v < min) { v = min; } else if(v > max) { v = max; }
  
@@ -117,27 +118,25 @@ typedef struct {
 //    return img;
 //}
  
-static PPMImage *init_destination_image(float scale) {
- 
-    PPMImage *img;
- 
-    //alloc memory form image
-    img = (PPMImage *)malloc(sizeof(PPMImage));
-    if(!img) {
- 
-        Debug("Unable to allocate memory\n");
-        return NULL;
-    }
- 
-    //memory allocation for pixel data
-    img->data = (PPMPixel*)malloc(W * H * (int)scale * sizeof(PPMPixel));
-    if(!img) {
- 
-        Debug("Unable to allocate memory\n");
-        return NULL;
-    }
-    return img;
-}
+//static PPMImage *init_destination_image(void) {
+// 
+//    static PPMImage *img;
+// 
+////    //alloc memory form image
+////    img = (PPMImage *)malloc(sizeof(PPMImage));
+////    if(!img) {
+//// 
+////        Debug("Unable to allocate memory\n");
+////        return NULL;
+////    }
+//    
+//    static int16_t _data[W * H * SCALE];
+// 
+//    //memory allocation for pixel data
+//    img->data = _data;
+//    
+//    return img;
+//}
  
 //void writePPM(const char *filename, PPMImage *img)
 //{
@@ -181,19 +180,20 @@ void get_pixel_clamped(PPMImage *source_image, int x, int y, uint8_t temp[])  {
  
     CLAMP(x, 0, source_image->x - 1);
     CLAMP(y, 0, source_image->y - 1);
+    Debug("get source_image pixel x=%d y=%d",x,y);
+    temp[0] = source_image->data[x+(W*y)];
     
-    temp[0] = source_image->data[x+(W*y)].temperature;
 //    temp[1] = source_image->data[x+(W*y)].green;
 //    temp[2] = source_image->data[x+(W*y)].blue;
 }
  
 void sample_bicubic(PPMImage *source_image, float u, float v, uint8_t sample[]) {
  
-    float x = (u * source_image->x)-0.5;
+    float x = (u * source_image->x) - 0.5f;
     int xint = (int)x;
     float xfract = x-floor(x);
  
-    float y = (v * source_image->y) - 0.5;
+    float y = (v * source_image->y) - 0.5f;
     int yint = (int)y;
     float yfract = y - floor(y);
     
@@ -257,34 +257,33 @@ void sample_bicubic(PPMImage *source_image, float u, float v, uint8_t sample[]) 
  
         sample[i] = (uint8_t)value;
         
-        Debug("sample[%d]=%d\n",i,sample[i]);      
+        //Debug("sample[%d]=%d\n",i,sample[i]);      
         
     }
     
 }
  
-void resize_image(PPMImage *source_image, PPMImage *destination_image, uint8_t scale) {
+void resize_image(PPMImage *source_image, PPMImage *destination_image) {
  
-    uint8_t sample[1];
+    uint8_t sample[1] = {0xff};
     int y, x;
     
-    destination_image->x = (long)((source_image->x)*scale);
-    destination_image->y = (long)((source_image->y)*scale);
+    destination_image->x = ((source_image->x)*SCALE);
+    destination_image->y = ((source_image->y)*SCALE);
     
     Debug("x-width=%d | y-width=%d\n",destination_image->x, destination_image->y);
     
     for (y = 0; y < destination_image->y; y++) {
  
         float v = (float)y / (float)(destination_image->y - 1);
-        
+        Debug("set destination_image pixel x=%d y=%d, memory%d",x,y, x+((destination_image->x)*y));
         for (x = 0; x < destination_image->x; ++x) {
  
             float u = (float)x / (float)(destination_image->x - 1);
-            Debug("v=%f\n",v);
-            Debug("u=%f\n",u);
-            sample_bicubic(source_image, u, v, sample);
- 
-            destination_image->data[x+((destination_image->x)*y)].temperature   = sample[0];
+            
+            //sample_bicubic(source_image, u, v, sample);
+            
+            //destination_image->data[x+((destination_image->x)*y)]   = sample[0];
 //            destination_image->data[x+((destination_image->y)*y)].green = sample[1];  
 //            destination_image->data[x+((destination_image->y)*y)].blue  = sample[2];  
         }
@@ -318,53 +317,58 @@ int16_t min(int16_t* a, int n)
     return minnum;
 }
 
-void showFloyd(PPMImage *source_image)
+static int16_t destination_data[W * H * SCALE];
+
+void showFloyd(PPMImage *source_image, uint8_t* xbm)
 {
-    PPMImage *destination_image;
-    destination_image = init_destination_image(8);
+    PPMImage destination_image;
+    destination_image.data = destination_data;
     
     int16_t maxnum = max((int16_t*)source_image->data, 64);
     int16_t minnum = min((int16_t*)source_image->data, 64);
     
+    
+    
+    resize_image(source_image, &destination_image);
     Debug("Max %d, Min %d",maxnum,minnum);
+//    for(int x=0; x<m; x++)
+//    {
+//        for(int y=0; y<n; y++)
+//        {
+//            int16_t pixel = destination_image->data[x+((destination_image->x)*y)];
+//            int16_t err;
+//            if(pixel < ((maxnum - minnum)/2))
+//            {
+//                //draw_dot(x,y,0);
+//                err = pixel - minnum;
+//                Debug("BLACK x %d, y %d",x,y);
+//            }
+//                
+//            else
+//            {
+//                //draw_dot(x,y,1);
+//                xbm[(y+m*x)/8] |= 1<<((y+m*x)%8);
+//                err = pixel - maxnum;
+//                Debug("WHITE x %d, y %d",x,y);
+//            }
+//            
+//            if(y+1<m)
+//                destination_image->data[x+((destination_image->x)*(y+1))] = destination_image->data[x+((destination_image->x)*(y+1))] +7/16*err;
+//                //tmp(x,y+1)=tmp(x,y+1)+7/16*err;
+//            if(x+1<m && y>2)
+//                destination_image->data[(x+1)+((destination_image->x)*(y-1))] = destination_image->data[(x+1)+((destination_image->x)*(y-1))] +3/16*err;
+//                //tmp(x+1,y-1)=tmp(x+1,y-1)+3/16*err;
+//            if(x+1<m)
+//                destination_image->data[(x+1)+((destination_image->x)*y)] = destination_image->data[(x+1)+((destination_image->x)*y)] +5/16*err;
+//                //tmp(x+1,y)=tmp(x+1,y)+5/16*err;
+//            if(x+1<m && y+1<m)
+//                destination_image->data[(x+1)+((destination_image->x)*(y+1))] = destination_image->data[(x+1)+((destination_image->x)*(y+1))] +1/16*err;
+//                //tmp(x+1,y+1)=tmp(x+1,y+1)+1/16*err;
+//                
+//        }
+//    
+//    }
     
-    resize_image(source_image, destination_image, 8);
-    
-    for(int x=0; x<m; x++)
-    {
-        for(int y=0; y<n; y++)
-        {
-            int16_t pixel = destination_image->data[x+((destination_image->x)*y)].temperature;
-            int16_t err;
-            if(pixel < ((maxnum - minnum)/2))
-            {
-                draw_dot(x,y,0);
-                err = pixel - minnum;
-            }
-                
-            else
-            {
-                draw_dot(x,y,1);
-                err = pixel - maxnum;
-            }
-            
-            if(y+1<m)
-                destination_image->data[x+((destination_image->x)*(y+1))].temperature = destination_image->data[x+((destination_image->x)*(y+1))].temperature +7/16*err;
-                //tmp(x,y+1)=tmp(x,y+1)+7/16*err;
-            if(x+1<m && y>2)
-                destination_image->data[(x+1)+((destination_image->x)*(y-1))].temperature = destination_image->data[(x+1)+((destination_image->x)*(y-1))].temperature +3/16*err;
-                //tmp(x+1,y-1)=tmp(x+1,y-1)+3/16*err;
-            if(x+1<m)
-                destination_image->data[(x+1)+((destination_image->x)*y)].temperature = destination_image->data[(x+1)+((destination_image->x)*y)].temperature +5/16*err;
-                //tmp(x+1,y)=tmp(x+1,y)+5/16*err;
-            if(x+1<m && y+1<m)
-                destination_image->data[(x+1)+((destination_image->x)*(y+1))].temperature = destination_image->data[(x+1)+((destination_image->x)*(y+1))].temperature +1/16*err;
-                //tmp(x+1,y+1)=tmp(x+1,y+1)+1/16*err;
-                
-        }
-    
-    }
-
 }
  
 //int main() {
