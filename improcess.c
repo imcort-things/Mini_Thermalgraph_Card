@@ -100,7 +100,7 @@ void sample_bicubic(int16_t *source_data, float u, float v, uint8_t sample[]) {
  
         float value = cubic_hermite(col0, col1, col2, col3, yfract);
  
-        CLAMP(value, 0.0f, 255.0f);
+        //CLAMP(value, 0.0f, 255.0f);
  
         sample[i] = (uint8_t)value;
         
@@ -164,11 +164,14 @@ void showFloyd(int16_t *source_data, uint8_t* xbm)
     
     int x,y;
     
-    int16_t maxnum = max(source_data, 64);
-    int16_t minnum = min(source_data, 64);
+    
 
     resize_image(source_data);
-    Debug("Max %d, Min %d",maxnum,minnum);
+    
+    
+    int16_t maxnum = max(destination_data, SOURCE_X * SOURCE_Y * SCALE * SCALE);
+    int16_t minnum = min(destination_data, SOURCE_X * SOURCE_Y * SCALE * SCALE);
+    Debug("Max %d, Min %d, avg %d",maxnum,minnum,(maxnum + minnum)/2);
     
     for (y = 0; y < (SOURCE_Y * SCALE); y++) {
  
@@ -177,11 +180,11 @@ void showFloyd(int16_t *source_data, uint8_t* xbm)
             int16_t pixel = destination_data[x+((SOURCE_X * SCALE)*y)];
             int16_t err;
             
-            if(pixel < ((maxnum - minnum)/2))
+            if(pixel < (maxnum + minnum)/2)
             {
                 //draw_dot(x,y,0);
                 err = pixel - minnum;
-                Debug("BLACK x %d, y %d",x,y);
+                //Debug("BLACK x %d, y %d, write%d",x,y,(y*(SOURCE_X * SCALE)+x)/8);
             }
             
             else
@@ -189,81 +192,25 @@ void showFloyd(int16_t *source_data, uint8_t* xbm)
                 //draw_dot(x,y,1);
                 xbm[(y*(SOURCE_X * SCALE)+x)/8] |= 1<<((y*(SOURCE_X * SCALE)+x)%8);
                 err = pixel - maxnum;
-                Debug("WHITE x %d, y %d",x,y);
+                //Debug("WHITE x %d, y %d, write%d",x,y,(y*(SOURCE_X * SCALE)+x)/8);
             }
             
-            if(y+1<(SOURCE_Y * SCALE))
-                destination_data[x+((SOURCE_X * SCALE)*(y+1))] = destination_data[x+((SOURCE_X * SCALE)*(y+1))] +7/16*err;
-                //tmp(x,y+1)=tmp(x,y+1)+7/16*err;
-            if(x+1<(SOURCE_X * SCALE) && y>2)
-                destination_data[(x+1)+((SOURCE_X * SCALE)*(y-1))] = destination_data[(x+1)+((SOURCE_X * SCALE)*(y-1))] +3/16*err;
-                //tmp(x+1,y-1)=tmp(x+1,y-1)+3/16*err;
-            if(x+1<(SOURCE_X * SCALE))
-                destination_data[(x+1)+((SOURCE_X * SCALE)*y)] = destination_data[(x+1)+((SOURCE_X * SCALE)*y)] +5/16*err;
-                //tmp(x+1,y)=tmp(x+1,y)+5/16*err;
-            if(x+1<(SOURCE_X * SCALE) && y+1<(SOURCE_Y * SCALE))
-                destination_data[(x+1)+((SOURCE_X * SCALE)*(y+1))] = destination_data[(x+1)+((SOURCE_X * SCALE)*(y+1))] +1/16*err;
-                //tmp(x+1,y+1)=tmp(x+1,y+1)+1/16*err;
+//            if(y+1<(SOURCE_Y * SCALE))
+//                destination_data[x+((SOURCE_X * SCALE)*(y+1))] = destination_data[x+((SOURCE_X * SCALE)*(y+1))] +7/16*err;
+//                //tmp(x,y+1)=tmp(x,y+1)+7/16*err;
+//            if(x+1<(SOURCE_X * SCALE) && y>2)
+//                destination_data[(x+1)+((SOURCE_X * SCALE)*(y-1))] = destination_data[(x+1)+((SOURCE_X * SCALE)*(y-1))] +3/16*err;
+//                //tmp(x+1,y-1)=tmp(x+1,y-1)+3/16*err;
+//            if(x+1<(SOURCE_X * SCALE))
+//                destination_data[(x+1)+((SOURCE_X * SCALE)*y)] = destination_data[(x+1)+((SOURCE_X * SCALE)*y)] +5/16*err;
+//                //tmp(x+1,y)=tmp(x+1,y)+5/16*err;
+//            if(x+1<(SOURCE_X * SCALE) && y+1<(SOURCE_Y * SCALE))
+//                destination_data[(x+1)+((SOURCE_X * SCALE)*(y+1))] = destination_data[(x+1)+((SOURCE_X * SCALE)*(y+1))] +1/16*err;
+//                //tmp(x+1,y+1)=tmp(x+1,y+1)+1/16*err;
             
         }
     }
     
-//    for(int x=0; x<m; x++)
-//    {
-//        for(int y=0; y<n; y++)
-//        {
-//            int16_t pixel = destination_image->data[x+((destination_image->x)*y)];
-//            int16_t err;
-//            if(pixel < ((maxnum - minnum)/2))
-//            {
-//                //draw_dot(x,y,0);
-//                err = pixel - minnum;
-//                Debug("BLACK x %d, y %d",x,y);
-//            }
-//                
-//            else
-//            {
-//                //draw_dot(x,y,1);
-//                xbm[(y+m*x)/8] |= 1<<((y+m*x)%8);
-//                err = pixel - maxnum;
-//                Debug("WHITE x %d, y %d",x,y);
-//            }
-//            
-//            if(y+1<m)
-//                destination_image->data[x+((destination_image->x)*(y+1))] = destination_image->data[x+((destination_image->x)*(y+1))] +7/16*err;
-//                //tmp(x,y+1)=tmp(x,y+1)+7/16*err;
-//            if(x+1<m && y>2)
-//                destination_image->data[(x+1)+((destination_image->x)*(y-1))] = destination_image->data[(x+1)+((destination_image->x)*(y-1))] +3/16*err;
-//                //tmp(x+1,y-1)=tmp(x+1,y-1)+3/16*err;
-//            if(x+1<m)
-//                destination_image->data[(x+1)+((destination_image->x)*y)] = destination_image->data[(x+1)+((destination_image->x)*y)] +5/16*err;
-//                //tmp(x+1,y)=tmp(x+1,y)+5/16*err;
-//            if(x+1<m && y+1<m)
-//                destination_image->data[(x+1)+((destination_image->x)*(y+1))] = destination_image->data[(x+1)+((destination_image->x)*(y+1))] +1/16*err;
-//                //tmp(x+1,y+1)=tmp(x+1,y+1)+1/16*err;
-//                
-//        }
-//    
-//    }
-    
 }
- 
-//int main() {
-//    
-//    float scale = 2.0f; 
-//    PPMImage *source_image;
-//    PPMImage *destination_image;
-//   
-//    printf("starting...\n\n");
-//    
-//    if(remove(OUT_PATH) == 0)
-//        printf("Deleting old image...\n\n");
-// 
-//    source_image = readPPM(INP_PATH);
-//    destination_image = init_destination_image(scale);
-//    
-//    resize_image(source_image, destination_image, scale);
-// 
-//    writePPM(OUT_PATH, destination_image);
-// 
-//}
+
+
