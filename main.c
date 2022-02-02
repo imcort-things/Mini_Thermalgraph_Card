@@ -104,9 +104,12 @@ int16_t findmin(int16_t* a, int n)
 
 static void get_ir_temp_timer_handler(void * p_context)
 {
-
+    nrf_gpio_pin_set(26);
+    delay(100);
+    amg88xx_begin();
+    delay(100);
 	amg88xx_getIRGrid(temp_grid);
-    
+    nrf_gpio_pin_clear(26);
     
     
     disp_temperature(temp_grid);
@@ -167,41 +170,17 @@ void draw_dot(int x, int y, bool c)
 #define SOURCE_Y 8
 #define SCALE 8
 
+uint8_t xbm[64*8] = {0xff, 0xff};
+
+void showFloyd(int16_t *source_data, uint8_t* xbm);
+
 void disp_temperature(int16_t * temp_grid)
 {
     u8g2_ClearDisplay(&u8g2);
-	uint8_t xbm[64*8] = {0xff, 0xff};
-    
+	
     memset(xbm, 0, 64*8);
     
     showFloyd(temp_grid, xbm);
-    u8g2_SetDrawColor(&u8g2, 1);
-        u8g2_SetBitmapMode(&u8g2,0);
-    
-    
-//    do {
-//        
-//        u8g2_DrawBitmap(&u8g2,0,0,8,64,xbm);
-//    } while (u8g2_NextPage(&u8g2));
-
-//    for(int y=0; y<64; y++){
-//        for(int x=0; x<64; x++){
-//            xbm[(y*(SOURCE_X * SCALE)+x)/8] |= 1<<((y*(SOURCE_X * SCALE)+x)%8);
-//            
-//            uint8_t pix = xbm[(y*(SOURCE_X * SCALE)+x)/8];
-//            char output[255];
-//            sprintf(output,"Fixing %d, %d,%d,%d,%d,%d,%d,%d,%d", (y*(SOURCE_X * SCALE)+x)/8, pix&&(1), pix(2), pix&&(4), pix&&(8), pix&&(16), pix&&(32), pix&&(64), pix&&(128));
-//            Debug("%s", output);
-//            
-//            do {
-//                u8g2_SetDrawColor(&u8g2, 1);
-//                u8g2_SetBitmapMode(&u8g2,0);
-//                u8g2_DrawXBM(&u8g2,0,0,64,64,xbm);
-//            } while (u8g2_NextPage(&u8g2));
-//        }
-//        
-//    }
-    //Debug("max:%d, min:%d",,findmin(temp_grid,64));
     
     u8g2_SetFont(&u8g2, u8g2_font_6x13_t_hebrew);
     char outputmax[10];
