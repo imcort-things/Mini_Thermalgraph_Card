@@ -85,6 +85,8 @@
 #define IIC_SDA   23
 #define IIC_SCL   22
 
+#define AMG88_POWER 26
+
 //New PCB of NFC card
 #define OLED_PIN_CS     3//2
 #define OLED_PIN_VDISP  2//3  

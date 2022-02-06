@@ -75,46 +75,34 @@ void disp_temperature(int16_t * temp_grid);
 
 extern u8g2_t u8g2;
 
-int16_t findmax(int16_t* a, int n)
+void find_num(int16_t* input, int n, int16_t* maxnum, int16_t* minnum, int16_t* avgnum)
 {
-    int16_t maxnum = a[0];
+    *maxnum = input[0];
+    *minnum = input[0];
+    int32_t avgsum = 0;
     
     for(int i=0;i<n;i++)
     {
-        if(a[i] > maxnum)
-            maxnum = a[i];
+        if(input[i] > *maxnum)
+            *maxnum = input[i];
+        
+        if(input[i] < *minnum)
+            *minnum = input[i];
+        
+        avgsum += input[i];
     
     }
-    return maxnum;
-}
-
-int16_t findmin(int16_t* a, int n)
-{
-    int16_t minnum = a[0];
     
-    for(int i=0;i<n;i++)
-    {
-        if(a[i] < minnum)
-            minnum = a[i];
+    *avgnum = avgsum / n;
     
-    }
-    return minnum;
 }
-
 
 static void get_ir_temp_timer_handler(void * p_context)
 {
-    nrf_gpio_pin_set(26);
-    delay(100);
-    amg88xx_begin();
-    delay(100);
+   
 	amg88xx_getIRGrid(temp_grid);
-    nrf_gpio_pin_clear(26);
-    
-    
     disp_temperature(temp_grid);
     
-	
 }
 
 static void lfclk_config(void)
@@ -127,17 +115,16 @@ static void lfclk_config(void)
 
 void bsp_evt_handler(bsp_event_t evt)
 {
-    drv_oled_on();
     switch (evt)
     {
         case BSP_EVENT_KEY_2:
 				
-						NRF_LOG_INFO("KEY0");
-						get_ir_temp_timer_handler(NULL);
+            NRF_LOG_INFO("KEY0");
+            drv_oled_on();
             break;
 
         default:
-					NRF_LOG_INFO("KEY?");
+            NRF_LOG_INFO("KEY?");
             return; // no implementation needed
     }
 }
@@ -146,53 +133,50 @@ static void bsp_configuration()
 {
     uint32_t err_code;
 	
-		err_code = app_timer_init();
+    err_code = app_timer_init();
     APP_ERROR_CHECK(err_code);
 
     err_code = bsp_init(BSP_INIT_BUTTONS, bsp_evt_handler);
     APP_ERROR_CHECK(err_code);
 }
 
+uint8_t xbm[64*16] = {0xff, 0xff};
 
-
-
-
-
-void draw_dot(int x, int y, bool c)
-{
-    
-        u8g2_SetDrawColor(&u8g2, c);
-        u8g2_DrawPixel(&u8g2, x, y);
-    
-}
-
-#define SOURCE_X 8
-#define SOURCE_Y 8
-#define SCALE 8
-
-uint8_t xbm[64*8] = {0xff, 0xff};
-
-void showFloyd(int16_t *source_data, uint8_t* xbm);
+void showFloyd(int16_t *source_data, uint8_t* xbm, int16_t maxnum, int16_t minnum, int16_t avgnum);
 
 void disp_temperature(int16_t * temp_grid)
 {
-    u8g2_ClearDisplay(&u8g2);
-	
+    
+    //u8g2_ClearBuffer(&u8g2);
+    u8g2_SetDrawColor(&u8g2,1);
+    u8g2_SetBitmapMode(&u8g2,0);
+    
+    int16_t maxnum,minnum,avgnum;
+    find_num(temp_grid, 64, &maxnum, &minnum, &avgnum);
+    
+    NRF_LOG_INFO("ori max:%d, min:%d", maxnum, minnum);
+
     memset(xbm, 0, 64*8);
+
+    showFloyd(temp_grid, xbm, maxnum, minnum, avgnum);
     
-    showFloyd(temp_grid, xbm);
     
+
     u8g2_SetFont(&u8g2, u8g2_font_6x13_t_hebrew);
     char outputmax[10];
     char outputmin[10];
-    sprintf(outputmax,"Max: %.2f", 0.015625f * findmax(temp_grid,64));
-    sprintf(outputmin,"Min: %.2f", 0.015625f * findmin(temp_grid,64));
-    
-    do {
-        u8g2_DrawStr(&u8g2, 64, 10, outputmax);
-        u8g2_DrawStr(&u8g2, 64, 20, outputmin);
-        u8g2_DrawBitmap(&u8g2,0,0,8,64,xbm);
-    } while (u8g2_NextPage(&u8g2));
+    sprintf(outputmax,"Max: %.2f", 0.015625f * maxnum);
+    sprintf(outputmin,"Min: %.2f", 0.015625f * minnum);
+
+
+    u8g2_DrawStr(&u8g2, 64, 10, outputmax);
+    u8g2_DrawStr(&u8g2, 64, 20, outputmin);
+    u8g2_DrawXBM(&u8g2,0,0,64,64,xbm);
+
+    u8g2_SendBuffer(&u8g2);
+
+	
+	
 }
 
 /**
@@ -200,35 +184,27 @@ void disp_temperature(int16_t * temp_grid)
  */
 int main(void)
 {
-		lfclk_config();
-		bsp_configuration();
-	
+    lfclk_config();
+    bsp_configuration();
+
     APP_ERROR_CHECK(NRF_LOG_INIT(NULL));
     NRF_LOG_DEFAULT_BACKENDS_INIT();
 
     drv_oled_begin();
-	
-		nrf_gpio_cfg_output(26);
-		nrf_gpio_pin_set(26);
-	
-		iic_init();
-		amg88xx_begin();
-		drv_oled_on();
-	
-		APP_ERROR_CHECK(app_timer_create(&get_ir_temp_timer, APP_TIMER_MODE_REPEATED, get_ir_temp_timer_handler));
-		//app_timer_start(get_ir_temp_timer, 5000, NULL);
-	
-		NRF_LOG_INFO("\r\nTWI sensor example started.");
-	
-	
+    amg88xx_begin();
+    
+    APP_ERROR_CHECK(app_timer_create(&get_ir_temp_timer, APP_TIMER_MODE_REPEATED, get_ir_temp_timer_handler));
+    app_timer_start(get_ir_temp_timer, 500000, NULL);
 
-		while (1)
+    NRF_LOG_INFO("\r\nTWI sensor example started.");
+
+    while (1)
     {
 
-				NRF_LOG_FLUSH();
+        NRF_LOG_FLUSH();
         __SEV();
         __WFE();
-        __WFE();
+        
     }
 }
 
